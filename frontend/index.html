@@ -22,6 +22,7 @@
             <div class="nav-link active" onclick="navigate('receipt', this)">Create Invoice</div>
             <div class="nav-link" onclick="navigate('quote', this)">Create Quote</div>
             <div class="nav-link" onclick="navigate('quotes', this)">Quotes</div>
+            <div class="nav-link" onclick="navigate('jobs', this)">Jobs Done</div>
             <div class="nav-link" onclick="navigate('history', this)">History</div>
         </aside>
 
@@ -140,6 +141,15 @@
                 </div>
             </div>
 
+            <!-- Temporary Jobs done section -->
+            <div id="jobsView" style="display:none;">
+                <div class="badge">Jobs Done</div>
+                <h2>Here are some of the works done.</h2>
+                <p class="section-subtitle">Let's browse..</p>
+
+                <div class="empty-state">Coming Soon...</div>
+            </div>
+            
             <div id="historyView" style="display:none;">
                 <div class="badge">History</div>
                 <h2>History</h2>
@@ -530,6 +540,7 @@
 
         document.getElementById("formView").style.display = "none";
         document.getElementById("quotesView").style.display = "none";
+        document.getElementById("jobsView").style.display = "none";
         document.getElementById("historyView").style.display = "none";
 
         setRequestStatus();
@@ -539,7 +550,12 @@
             return;
         }
 
-        if (mode === "history") {
+        else if (mode === "jobs") {
+            document.getElementById("jobsView").style.display = "block";
+            return;
+        }
+
+        else if (mode === "history") {
             document.getElementById("historyView").style.display = "block";
             fetchHistory();
             return;
@@ -761,12 +777,20 @@
             }
 
             const blob = await res.blob();
+
+            if (!blob || blob.size === 0) {
+                setRequestStatus("Received empty file from server.", "error");
+                alert("Save error: server returned an empty file.");
+                return;
+            }
+
             downloadBlob(blob, "quote.pdf");
             setRequestStatus("Quote saved successfully. Download should start automatically.", "success");
+
         } catch (error) {
             console.error(error);
             setRequestStatus("Save and download failed.", "error");
-            alert("Save and download failed.");
+            alert("Save and download failed: " + error.message);
         } finally {
             isSavingQuote = false;
             setButtonLoading(btn, "Processing Quote...", false);
@@ -796,19 +820,18 @@
 
             if (!res.ok) {
                 const err = await res.text();
-                setRequestStatus("Failed to generate invoice.", "error");
-                alert("Invoice error: " + err);
-                return;
+                throw new Error(err);
             }
 
             const blob = await res.blob();
-            downloadBlob(blob, "invoice.pdf");
-            setRequestStatus("Invoice generated successfully. Download should start automatically.", "success");
+            setRequestStatus("Invoice generated successfully.", "success");  
+            downloadBlob(blob, "invoice.pdf");                                
+
         } catch (error) {
-            console.error(error);
+            console.error("Invoice error:", error);
             setRequestStatus("Invoice request failed.", "error");
-            alert("Invoice request failed.");
         } finally {
+            // always runs — re-enables the button whether it succeeded or failed
             isSubmittingInvoice = false;
             setButtonLoading(btn, "Generating Invoice...", false);
             document.getElementById("addItemBtn").disabled = false;

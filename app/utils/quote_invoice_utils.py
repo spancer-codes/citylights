@@ -79,10 +79,9 @@ def calculate_invoice_totals(data: InvoiceRequest):
 
     return round(subtotal, 2), structured_items
 
-
 def build_invoice_payload(data: InvoiceRequest, invoice_number: str):
     total_amount, structured_items = calculate_invoice_totals(data)
-
+    
     payload = {
         "invoice_number": invoice_number,
         "client_name": data.client_name,

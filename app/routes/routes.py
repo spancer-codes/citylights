@@ -7,13 +7,19 @@ from fastapi.responses import FileResponse
 from typing import List
 from datetime import date, timedelta
 from app.database import get_db
-from app.models import Invoices, Quotes
-from app.schemas import InvoiceOut, QuoteOut
+from app.models import Invoices, Quotes, AIGeneratedQuote
+from app.schemas import InvoiceOut
 from app.utils.quote_invoice_utils import slugify_name, build_quote_payload, build_invoice_payload
-from app.schemas import QuoteRequest, InvoiceRequest
-from app.services.quote import generate_quote_file
-from app.services.invoice import generate_invoice_file
+from app.schemas import (QuoteRequest, 
+                         InvoiceRequest,
+                         WhatsAppExtractRequest,
+                        AIGeneratedQuoteResponse,
+                        SelectClientRequest,
+                        ApproveQuoteRequest)
+from app.services.quote_invoice_generators import generate_invoice_file, generate_quote_file
 from app.services.quote_to_invoice import convert_quote_to_invoice
+from app.ai.ai_quote_extract import extract_from_whatsapp
+from app.ai.client_lookup import search_clients
 
 
 
@@ -60,49 +66,43 @@ def get_all_quotes(
 
 @router.get("/invoice_db", response_model=List[InvoiceOut])
 def get_all_invoices(
-        db: Session = Depends(get_db),
-        limit: int = 5,
-        start_date: date = Query(None),
-        end_date: date = Query(None)
-    ):
-        try:
-            query = db.query(Invoices)
+    db: Session = Depends(get_db),
+    limit: int = 5,
+    start_date: date = Query(None),
+    end_date: date = Query(None)
+):
+    try:
+        query = db.query(Invoices)
 
-            if start_date and end_date:
-                query = query.filter(
-                    Invoices.client_date >= start_date,
-                    Invoices.client_date <= end_date
-                )
-            else:
-                last_month = date.today() - timedelta(days=30)
-                query = query.filter(Invoices.client_date >= last_month)
+        if start_date and end_date:
+            query = query.filter(
+                Invoices.client_date >= start_date,
+                Invoices.client_date <= end_date
+            )
+        else:
+            last_month = date.today() - timedelta(days=30)
+            query = query.filter(Invoices.client_date >= last_month)
 
-            invoices = query.order_by(Invoices.client_date.desc()).limit(limit).all()
-            # create invoice number if not exists and return pdf path
-            for inv in invoices:
-                client_name = inv.client_name 
-                id = inv.id
-        
-                if id < 10:
-                    sequence = f"000{id}"
-                elif id < 100:
-                    sequence = f"00{id}"
-                invoice_number = f"{slugify_name(client_name)}-{sequence}"
-                pdf_path = f"generated_invoices/{invoice_number}.pdf"
+        invoices = query.order_by(Invoices.client_date.desc()).limit(limit).all()
 
-            return({
-                "invoice_number": inv.invoice_number or invoice_number or  "",
+        result = []
+        for inv in invoices:
+            sequence = f"{inv.id:04d}"
+            invoice_number = inv.invoice_number or f"{slugify_name(inv.client_name)}-{sequence}"
+            pdf_path = inv.final_pdf_path or f"generated_invoices/{invoice_number}.pdf"
+
+            result.append({
+                "invoice_number": invoice_number,
                 "client_name": inv.client_name or "",
                 "client_address": inv.client_address or "",
                 "client_date": inv.client_date,
-                "invoice": inv.final_pdf_path or pdf_path or ""
-            }
-            for inv in invoices
-            )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+                "invoice": pdf_path
+            })
 
+        return result
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/pdf/{type}/{filename}")
 def serve_pdf(type: str, filename: str):
@@ -128,23 +128,21 @@ def serve_pdf(type: str, filename: str):
         }
     )
 
-# quote preview api
 @router.post("/quote/preview")
 def preview_quote(data: QuoteRequest):
+    try:
+        slug = slugify_name(data.client_name)
+        preview_number = f"{slug}-preview"
+        payload, _ = build_quote_payload(data, slug)
+        pdf_path = generate_quote_file(payload, preview_number)
 
-    slug = slugify_name(data.client_name)
-
-    preview_number = f"{slug}-preview"
-
-    payload, _ = build_quote_payload(data, slug)
-
-    pdf_path = generate_quote_file(payload, preview_number)
-
-    return FileResponse(
-        pdf_path,
-        media_type="application/pdf",
-        filename="quote-preview.pdf"
-    )
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename="quote-preview.pdf"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/quote/finalize")
 def finalize_quote(data: QuoteRequest, db: Session = Depends(get_db)):
@@ -159,21 +157,18 @@ def finalize_quote(data: QuoteRequest, db: Session = Depends(get_db)):
         )
 
         db.add(new_quote)
-        db.flush()   
+        db.flush()
 
         slug = slugify_name(data.client_name)
         sequence = f"{new_quote.id:04d}"
-
         quote_number = f"{slug}-{sequence}"
 
         payload, total_amount = build_quote_payload(data, quote_number)
-
         pdf_path = generate_quote_file(payload, quote_number)
 
         new_quote.client_quote_number = quote_number
         new_quote.total_amount = total_amount
         new_quote.quote_data = payload
-
         new_quote.cached_pdf_path = pdf_path
         new_quote.updated_at = datetime.utcnow()
 
@@ -187,8 +182,9 @@ def finalize_quote(data: QuoteRequest, db: Session = Depends(get_db)):
         )
     except Exception as e:
         db.rollback()
-        return {"failed to finalize quote": str(e)}
-    
+        return {"failed to create quote": str(e)}
+
+# create invoice API
 @router.post("/invoice")
 def create_invoice(data: InvoiceRequest, db: Session = Depends(get_db)):
     try:
@@ -229,7 +225,6 @@ def create_invoice(data: InvoiceRequest, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         return {"failed to create invoice": str(e)}
-    
 
 # Quote to Invoice conversion route
 @router.post("/quotes/{quote_id}/convert-to-invoice")
@@ -239,3 +234,97 @@ def convert_quote_to_invoice_route(
     db: Session = Depends(get_db)
 ):
     return convert_quote_to_invoice(quote_id, amount_paid, db)
+
+# whatsapp quote extraction route
+@router.post("/ai-generated-quotes/from-whatsapp", response_model=AIGeneratedQuoteResponse)
+def create_ai_quote(payload: WhatsAppExtractRequest, db: Session = Depends(get_db)):
+
+    extracted = extract_from_whatsapp(payload.message)
+
+    status = "pending_client" if not extracted["client_name"] else "pending_review"
+
+    new_quote = AIGeneratedQuote(
+        raw_message=payload.message,
+        extracted_client_name=extracted["client_name"],
+        location=extracted["location"],
+        job_type=extracted["job_type"],
+        extracted_items=extracted["items"],
+        status=status
+    )
+
+    db.add(new_quote)
+    db.commit()
+    db.refresh(new_quote)
+
+    return new_quote
+
+@router.get("/ai-generated-quotes/client-search")
+def client_search(name: str, db: Session = Depends(get_db)):
+    results = search_clients(db, name)
+    return [r[0] for r in results]
+
+@router.post("/ai-generated-quotes/{quote_id}/select-client")
+def select_client(quote_id: int, payload: SelectClientRequest, db: Session = Depends(get_db)):
+
+    quote = db.query(AIGeneratedQuote).get(quote_id)
+
+    if not quote:
+        raise HTTPException(404, "Quote not found")
+
+    quote.selected_client_name = payload.client_name
+    quote.status = "pending_review"
+
+    db.commit()
+
+    return {"message": "Client selected"}
+
+@router.post("/ai-generated-quotes/{quote_id}/approve")
+def approve_quote(quote_id: int, payload: ApproveQuoteRequest, db: Session = Depends(get_db)):
+
+    ai_quote = db.query(AIGeneratedQuote).get(quote_id)
+
+    if not ai_quote:
+        raise HTTPException(404, "AI Quote not found")
+
+    if not ai_quote.selected_client_name:
+        raise HTTPException(400, "Client not selected")
+
+    # Convert items to your existing quote format
+    items = []
+    subtotal = 0
+
+    for item in payload.reviewed_items:
+        unit_price = 0  # user will fill later or from UI
+        total = (item.quantity or 1) * unit_price
+
+        items.append({
+            "description": item.name,
+            "quantity": item.quantity or 1,
+            "unit_price": unit_price,
+            "line_total": total
+        })
+
+        subtotal += total
+
+    # Create real quote
+    new_quote = Quotes(
+        client_name=ai_quote.selected_client_name,
+        client_address=ai_quote.location,
+        client_city="Harare",
+        items=items,
+        subtotal=subtotal,
+        total=subtotal
+    )
+
+    db.add(new_quote)
+    db.commit()
+    db.refresh(new_quote)
+
+    # Update AI table
+    ai_quote.reviewed_items = [item.dict() for item in payload.reviewed_items]
+    ai_quote.status = "converted"
+    ai_quote.final_quote_id = new_quote.id
+
+    db.commit()
+
+    return {"message": "Quote created", "quote_id": new_quote.id}

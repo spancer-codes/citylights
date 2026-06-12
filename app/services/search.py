@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, cast, String
-from app.database import get_db
+from app.db.database import get_db
 from app.models import Quotes, Invoices
 
 router = APIRouter()

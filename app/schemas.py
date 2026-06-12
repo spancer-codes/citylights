@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from datetime import date, datetime
 
 
@@ -9,13 +9,11 @@ class QuoteItem(BaseModel):
     quantity: float = Field(..., gt=0)
     unit_price: float = Field(..., ge=0)
 
-
 class QuoteRequest(BaseModel):
     client_name: str
     client_address: str
     client_city: Optional[str] = None
     items: Dict[str, QuoteItem]
-
 
 class QuoteUpdateRequest(BaseModel):
     client_name: Optional[str] = None
@@ -23,7 +21,6 @@ class QuoteUpdateRequest(BaseModel):
     client_city: Optional[str] = None
     items: Optional[Dict[str, QuoteItem]] = None
     status: Optional[str] = None
-
 
 class QuoteOut(BaseModel):
     client_quote_number: Optional[str] = ""
@@ -37,13 +34,11 @@ class QuoteOut(BaseModel):
     class Config:
         from_attributes = True
 
-
 # Invoice Schemas
 class InvoiceItem(BaseModel):
     description: str
     quantity: float = Field(..., gt=0)
     unit_price: float = Field(..., ge=0)
-
 
 class InvoiceRequest(BaseModel):
     client_name: str
@@ -52,12 +47,9 @@ class InvoiceRequest(BaseModel):
     client_rate: Optional[float] = None
     items: Dict[str, InvoiceItem]
 
-
-
 class InvoiceFromQuoteRequest(BaseModel):
     source_quote_id: int
     client_number: Optional[str] = None
-
 
 class InvoiceOut(BaseModel):
     invoice_number: Optional[str] = ""
@@ -69,14 +61,12 @@ class InvoiceOut(BaseModel):
     class Config:
         from_attributes = True
 
-
 # Customer Reuse Schemas
 class QuoteCustomerReuse(BaseModel):
     client_name: Optional[str] = None
     client_address: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
-
 
 class InvoiceCustomerReuse(BaseModel):
     client_name: Optional[str] = None
@@ -85,7 +75,6 @@ class InvoiceCustomerReuse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
 # Payment Schemas
 class PaymentCreate(BaseModel):
     amount: float = Field(..., gt=0)
@@ -93,7 +82,6 @@ class PaymentCreate(BaseModel):
     payment_method: Optional[str] = None
     reference: Optional[str] = None
     notes: Optional[str] = None
-
 
 class PaymentOut(BaseModel):
     id: int
@@ -107,7 +95,6 @@ class PaymentOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
 class ExpenseCreate(BaseModel):
     amount: float = Field(..., gt=0)
     category: str
@@ -115,7 +102,6 @@ class ExpenseCreate(BaseModel):
     entry_date: Optional[date] = None
     quote_id: Optional[int] = None
     invoice_id: Optional[int] = None
-
 
 class ProfitLossEntryOut(BaseModel):
     id: int
@@ -130,8 +116,34 @@ class ProfitLossEntryOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
 class ProfitLossSummaryOut(BaseModel):
     total_income: float
     total_expenses: float
     net_profit_loss: float
+
+# Whatsapp AI Quote Schemas
+class ExtractedItem(BaseModel):
+    name: str
+    quantity: Optional[float] = None
+    unit_price: Optional[float] = None
+
+class WhatsAppExtractRequest(BaseModel):
+    message: str
+
+class AIGeneratedQuoteResponse(BaseModel):
+    id: int
+    extracted_client_name: Optional[str]
+    selected_client_name: Optional[str]
+    location: Optional[str]
+    job_type: Optional[str]
+    extracted_items: List[ExtractedItem] = []
+    status: str
+
+    class Config:
+        from_attributes = True
+
+class SelectClientRequest(BaseModel):
+    client_name: str
+
+class ApproveQuoteRequest(BaseModel):
+    reviewed_items: List[ExtractedItem]

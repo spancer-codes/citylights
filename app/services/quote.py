@@ -12,7 +12,7 @@ def generate_quote_file(payload: dict, quote_number: str) -> str:
 
     # Defalut font style
     font = Font(bold=True, color="0000FF", name="Arial")
-
+    
     # Block fill
     fill = PatternFill(start_color="FF98AFC7", end_color="FF98AFC7", fill_type="solid")
 
@@ -53,7 +53,7 @@ def generate_quote_file(payload: dict, quote_number: str) -> str:
     ws.merge_cells("E8:H8")
     ws.merge_cells("E9:H9")
 
-    headers = ["#", "Item Description", "Quantity", "Unit Price", "Total Price"]
+    headers = ["#", "Item Description", "Qty", "Unit Price", "Total Price"]
 
     ws["A11"] = headers[0]
     ws["B11"] = headers[1]
@@ -61,6 +61,7 @@ def generate_quote_file(payload: dict, quote_number: str) -> str:
     ws["F11"] = headers[2]
     ws["G11"] = headers[3]
     ws["H11"] = headers[4]
+    
 
     header_row = 11
     start_row =  header_row +1 

@@ -28,25 +28,25 @@ def generate_invoice_file(payload: dict, invoice_number: str) -> str:
     ws["A1"] = "Invoice"
     ws["A1"].font = Font(size=16, bold=True, color="0000FF")
     ws.merge_cells("A1:F1")
+    ws['A2'] = "Invoice From: Leeroy"
+    ws["A3"] = f"Date: {payload['date_created']}"
+    ws["A4"] = f"Invoice Number: {invoice_number}"
 
-    ws["A2"] = f"Date: {payload['date_created']}"
-    ws["A3"] = f"Invoice Number: {invoice_number}"
+    ws["A5"] = "Customer Details"
+    ws["A5"].font = font
+    ws["A6"] = payload["client_name"]
+    ws["A7"] = payload["client_address"]
+    ws["A8"] = payload["client_number"]
 
-    ws["A4"] = "Customer Details"
-    ws["A4"].font = font
-    ws["A5"] = payload["client_name"]
-    ws["A6"] = payload["client_address"]
-    ws["A7"] = payload["client_number"]
-
-    ws.merge_cells("A6:D6")
     ws.merge_cells("A7:D7")
     ws.merge_cells("A8:D8")
     ws.merge_cells("A9:D9")
+    ws.merge_cells("A10:D10")
 
     headers = [
         "#",
         "Item Description",
-        "Quantity",
+        "Qty",
         "Price Ex.\nVat",
         "Price Inc.\nVat",
         "Total Price"
@@ -159,6 +159,7 @@ def generate_invoice_file(payload: dict, invoice_number: str) -> str:
     ws[f"A{current_row + 7}"] = "Account Number: 7860 2801 824"
     ws[f"A{current_row + 8}"] = "Account Type: Current"
     ws[f"A{current_row + 10}"] = "Note: Make sure the bank is Bidvest Bank Alliance and the Branch Code is 683000."
+    ws[f"A{current_row + 11}"] = "Not Vat Registered"
 
     ws.merge_cells(f"A{current_row + 3}:H{current_row + 3}")
     ws.merge_cells(f"A{current_row + 4}:H{current_row + 4}")
@@ -167,9 +168,12 @@ def generate_invoice_file(payload: dict, invoice_number: str) -> str:
     ws.merge_cells(f"A{current_row + 7}:H{current_row + 7}")
     ws.merge_cells(f"A{current_row + 8}:H{current_row + 8}")
     ws.merge_cells(f"A{current_row + 10}:H{current_row + 10}")
+    ws.merge_cells(f"A{current_row + 11}:H{current_row + 11}")
 
     ws[f"A{current_row + 10}"].font = Font(bold=False, italic=True)
+    ws[f"A{current_row + 11}"].font = Font(bold=False, italic=True)
     ws[f"A{current_row + 10}"].alignment = Alignment(wrap_text=True, horizontal="center")
+    ws[f"A{current_row + 11}"].alignment = Alignment(wrap_text=True, horizontal="center")
 
     wb.save(excel_path)
     excel2pdf(excel_path)

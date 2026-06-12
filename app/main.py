@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine, Base
+from app.db.database import engine, Base
 from app.routes.routes import router as routes_router
+from app.routes.invoices import router as invoice_router
+from app.routes.quotes import router as quotes_router
 from app.services.search import router as search_router
 from app.routes import customers
 from fastapi.staticfiles import StaticFiles
@@ -24,6 +26,8 @@ app.add_middleware(
     allow_methods=["*"],          
     allow_headers=["*"],
 )
+app.include_router(invoice_router)
+app.include_router(quotes_router)
 app.include_router(routes_router)
 app.include_router(search_router)
 app.include_router(customers.router)

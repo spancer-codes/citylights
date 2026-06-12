@@ -213,7 +213,7 @@ input {
     padding: 11px 13px;
     font-size: 14px;
     border: 1px solid #d1d5db;
-    border-radius: 10px;
+    border-radius: 5px;
     background: #fff;
     outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -264,7 +264,7 @@ tbody tr:hover {
 button {
     padding: 10px 16px;
     border: none;
-    border-radius: 6px;
+    border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 700;

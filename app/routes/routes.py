@@ -3,14 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from fastapi.responses import FileResponse
 from app.db.database import get_db
-from app.models import  Quotes, AIGeneratedQuote
-from app.schemas import (WhatsAppExtractRequest,
-                        AIGeneratedQuoteResponse,
-                        SelectClientRequest,
-                        ApproveQuoteRequest)
+#from app.schemas import (WhatsAppExtractRequest,AIGeneratedQuoteResponse,SelectClientRequest,ApproveQuoteRequest)
 from app.services.quote_to_invoice import convert_quote_to_invoice
-from app.ai.ai_quote_extract import extract_from_whatsapp
-from app.ai.client_lookup import search_clients
+#from app.ai.ai_quote_extract import extract_from_whatsapp
 
 router = APIRouter()
 
@@ -51,6 +46,7 @@ def convert_quote_to_invoice_route(
 ):
     return convert_quote_to_invoice(quote_id, amount_paid, db)
 
+"""
 # whatsapp quote extraction route
 @router.post("/ai-generated-quotes/from-whatsapp", response_model=AIGeneratedQuoteResponse)
 def create_ai_quote(payload: WhatsAppExtractRequest, db: Session = Depends(get_db)):
@@ -144,3 +140,4 @@ def approve_quote(quote_id: int, payload: ApproveQuoteRequest, db: Session = Dep
     db.commit()
 
     return {"message": "Quote created", "quote_id": new_quote.id}
+"""

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import json
 from app.models import Quotes, Invoices
 from app.utils.quote_invoice_utils import slugify_name
-from app.services.invoice import generate_invoice_file
+from app.services.quote_invoice_generators import generate_invoice_file
 
 
 def _load_quote_data(quote):

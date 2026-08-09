@@ -561,7 +561,7 @@ QUOTE_TEMPLATE = """
     <div class="totals-wrap">
       <div class="totals-box">
         <div class="totals-row"><span>Subtotal</span><span>R{{ "%.2f"|format(grand_total) }}</span></div>
-        <div class="totals-row"><span>VAT (incl.)</span><span>All prices inclusive</span></div>
+        <div class="totals-row"><span>VAT </span><span>Not Vat Registered</span></div>
         <div class="totals-row grand"><span>Grand Total</span><span class="amt">R{{ "%.2f"|format(grand_total) }}</span></div>
         {% if deposit_percent %}
         <div class="totals-row deposit">

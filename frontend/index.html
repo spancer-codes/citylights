@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>City Lights | Quotes & Invoices</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css"> 
 </head>
 <body>
 <div class="app">
@@ -21,12 +21,46 @@
             <div class="aside-title">Navigation</div>
             <div class="nav-link active" onclick="navigate('receipt', this)">Create Invoice</div>
             <div class="nav-link" onclick="navigate('quote', this)">Create Quote</div>
+            <div class="nav-link" onclick="navigate('dashboard', this)">Dashboard</div>
             <div class="nav-link" onclick="navigate('quotes', this)">Quotes</div>
             <div class="nav-link" onclick="navigate('jobs', this)">Jobs Done</div>
             <div class="nav-link" onclick="navigate('history', this)">History</div>
         </aside>
 
         <div class="content">
+            <div id="dashboardView" style="display:none;">
+                <div class="badge">Dashboard</div>
+                <h2>Business Overview</h2>
+                <p class="section-subtitle">Key statistics and performance metrics.</p>
+
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <h3>Total Quotes</h3>
+                        <p id="totalQuotes">0</p>
+                    </div>
+
+                    <div class="card">
+                        <h3>Total Invoices</h3>
+                        <p id="totalInvoices">0</p>
+                    </div>
+
+                    <div class="card">
+                        <h3>Converted Quotes</h3>
+                        <p id="convertedQuotes">0</p>
+                    </div>
+
+                    <div class="card">
+                        <h3>Conversion Rate</h3>
+                        <p id="conversionRate">0%</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Monthly Revenue</h3>
+                    <div id="revenueList"></div>
+                </div>
+            </div>
+
             <div id="formView" class="card">
                 <div class="badge">Document Generator</div>
                 <h2 id="pageTitle"></h2>
@@ -149,7 +183,7 @@
 
                 <div class="empty-state">Coming Soon...</div>
             </div>
-            
+
             <div id="historyView" style="display:none;">
                 <div class="badge">History</div>
                 <h2>History</h2>
@@ -221,262 +255,233 @@
 </div>
 
 <script>
-    const QUOTE_PREVIEW_API = "/quote/preview";
-    const QUOTE_SAVE_API = "/quote/finalize";
-    const INVOICE_API = "/invoice";
-    const QUOTE_CUSTOMERS_API = "/customers/quotes";
-    const INVOICE_CUSTOMERS_API = "/customers/invoices";
-    const QUOTE_HISTORY_API = "/quote_db";
-    const INVOICE_HISTORY_API = "/invoice_db";
-    const SEARCH_API = "/search";
+    const QUOTE_PREVIEW_API      = "/quote/preview";
+    const QUOTE_SAVE_API         = "/quote/finalize";
+    const INVOICE_API            = "/invoice";
+    const QUOTE_CUSTOMERS_API    = "/customers/quotes";
+    const INVOICE_CUSTOMERS_API  = "/customers/invoices";
+    const QUOTE_HISTORY_API      = "/quote_db";
+    const INVOICE_HISTORY_API    = "/invoice_db";
+    const SEARCH_API             = "/search";
+    const DASHBOARD_API          = "/dashboard";
 
     const MODES = {
         receipt: { title: "Create Invoice" },
-        quote: { title: "Create Quote" }
+        quote:   { title: "Create Quote"   }
     };
 
     let currentMode = "receipt";
     let previewBlobUrl = null;
 
-    let allQuoteCustomers = [];
+    let allQuoteCustomers      = [];
     let filteredQuoteCustomers = [];
-    let allInvoiceCustomers = [];
+    let allInvoiceCustomers      = [];
     let filteredInvoiceCustomers = [];
 
-    let isPreviewingQuote = false;
-    let isSavingQuote = false;
-    let isSubmittingInvoice = false;
+    let isPreviewingQuote    = false;
+    let isSavingQuote        = false;
+    let isSubmittingInvoice  = false;
+
+    /* ── Helpers ─────────────────────────────────────────────────────────── */
 
     function escapeHtml(value) {
         return String(value ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/&/g,  "&amp;")
+            .replace(/</g,  "&lt;")
+            .replace(/>/g,  "&gt;")
+            .replace(/"/g,  "&quot;")
+            .replace(/'/g,  "&#039;");
     }
 
     function setRequestStatus(message = "", type = "info") {
         const el = document.getElementById("requestStatus");
         if (!el) return;
-
         if (!message) {
-            el.className = "status-box";
+            el.className   = "status-box";
             el.textContent = "";
             return;
         }
-
-        el.className = `status-box ${type}`;
+        el.className   = `status-box ${type}`;
         el.textContent = message;
     }
 
     function setButtonLoading(button, loadingText, isLoading) {
         if (!button) return;
-
         if (isLoading) {
             if (!button.dataset.originalText) {
                 button.dataset.originalText = button.innerText;
             }
-            button.innerText = loadingText;
-            button.disabled = true;
+            button.innerText  = loadingText;
+            button.disabled   = true;
         } else {
             button.innerText = button.dataset.originalText || button.innerText;
-            button.disabled = false;
+            button.disabled  = false;
         }
     }
 
-    function getQuotePdfPath(q) {
-        return q.cached_pdf_path || q.client_quote_pdf || "";
-    }
-
-    function getInvoicePdfPath(inv) {
-        return inv.final_pdf_path || inv.client_invoice_pdf || inv.invoice||"";
-    }
-
-    function getQuoteNumber(q) {
-        return q.client_quote_number || q.quote_number || "-";
-    }
-
-    function getInvoiceNumber(inv) {
-        return inv.invoice_number || inv.client_invoice_number || "-";
-    }
+    function getQuotePdfPath(q)   { return q.cached_pdf_path || q.client_quote_pdf || ""; }
+    function getInvoicePdfPath(inv){ return inv.final_pdf_path || inv.client_invoice_pdf || inv.invoice || ""; }
+    function getQuoteNumber(q)     { return q.client_quote_number || q.quote_number || "-"; }
+    function getInvoiceNumber(inv) { return inv.invoice_number || inv.client_invoice_number || "-"; }
 
     function getQuoteTotalAmount(q) {
         const direct = Number(q.total_amount);
         if (!Number.isNaN(direct) && direct > 0) return direct;
-
         try {
             const payload = typeof q.quote_data === "string" ? JSON.parse(q.quote_data) : q.quote_data;
-            const total = Number(payload?.total);
+            const total   = Number(payload?.total);
             if (!Number.isNaN(total)) return total;
         } catch (e) {}
-
         return 0;
     }
 
     function formatMoney(amount) {
-        const value = Number(amount || 0);
-        return value.toFixed(2);
+        return Number(amount || 0).toFixed(2);
     }
 
-    async function loadQuoteCustomers() {
-        const quoteCustomerList = document.getElementById("quoteCustomerList");
+    /* ── Quote customer reuse ────────────────────────────────────────────── */
 
+    async function loadQuoteCustomers() {
+        const list = document.getElementById("quoteCustomerList");
         try {
             const response = await fetch(QUOTE_CUSTOMERS_API);
             if (!response.ok) throw new Error("Failed to fetch quote customers");
-
-            allQuoteCustomers = await response.json();
+            allQuoteCustomers      = await response.json();
             filteredQuoteCustomers = [...allQuoteCustomers];
             renderQuoteCustomerList(filteredQuoteCustomers);
         } catch (error) {
             console.error("Error loading quote customers:", error);
-            quoteCustomerList.innerHTML = `<div class="customer-empty">Failed to load previous customers.</div>`;
+            list.innerHTML = `<div class="customer-empty">Failed to load previous customers.</div>`;
         }
     }
 
     function renderQuoteCustomerList(customers) {
-        const quoteCustomerList = document.getElementById("quoteCustomerList");
-
+        const list = document.getElementById("quoteCustomerList");
         if (!customers.length) {
-            quoteCustomerList.innerHTML = `<div class="customer-empty">No matching customers found.</div>`;
+            list.innerHTML = `<div class="customer-empty">No matching customers found.</div>`;
             return;
         }
-
-        quoteCustomerList.innerHTML = customers.map((customer, index) => `
-            <div class="customer-item" data-index="${index}">
-                <div class="customer-name">${escapeHtml(customer.client_name)}</div>
+        list.innerHTML = customers.map((c, i) => `
+            <div class="customer-item" data-index="${i}">
+                <div class="customer-name">${escapeHtml(c.client_name)}</div>
                 <div class="customer-meta">
-                    ${escapeHtml(customer.client_address)}
-                    ${customer.client_city ? " • " + escapeHtml(customer.client_city) : ""}
+                    ${escapeHtml(c.client_address)}
+                    ${c.client_city ? " • " + escapeHtml(c.client_city) : ""}
                 </div>
             </div>
         `).join("");
 
-        document.querySelectorAll("#quoteCustomerList .customer-item").forEach(item => {
+        list.querySelectorAll(".customer-item").forEach(item => {
             item.addEventListener("click", function () {
-                const index = Number(this.dataset.index);
-                const selectedCustomer = customers[index];
-                fillQuoteCustomerFields(selectedCustomer);
+                fillQuoteCustomerFields(customers[Number(this.dataset.index)]);
             });
         });
     }
 
     function fillQuoteCustomerFields(customer) {
-        document.getElementById("clientName").value = customer.client_name || "";
-        document.getElementById("clientAddress").value = customer.client_address || "";
-        document.getElementById("clientCity").value = customer.client_city || "";
-        document.getElementById("quoteCustomerSearch").value = customer.client_name || "";
+        document.getElementById("clientName").value         = customer.client_name    || "";
+        document.getElementById("clientAddress").value      = customer.client_address || "";
+        document.getElementById("clientCity").value         = customer.client_city    || "";
+        document.getElementById("quoteCustomerSearch").value = customer.client_name   || "";
     }
 
     function filterQuoteCustomers(searchTerm) {
         const term = searchTerm.trim().toLowerCase();
-
-        if (!term) {
-            filteredQuoteCustomers = [...allQuoteCustomers];
-        } else {
-            filteredQuoteCustomers = allQuoteCustomers.filter(customer =>
-                (customer.client_name || "").toLowerCase().includes(term) ||
-                (customer.client_address || "").toLowerCase().includes(term) ||
-                (customer.client_city || "").toLowerCase().includes(term)
+        filteredQuoteCustomers = !term
+            ? [...allQuoteCustomers]
+            : allQuoteCustomers.filter(c =>
+                (c.client_name    || "").toLowerCase().includes(term) ||
+                (c.client_address || "").toLowerCase().includes(term) ||
+                (c.client_city    || "").toLowerCase().includes(term)
             );
-        }
-
         renderQuoteCustomerList(filteredQuoteCustomers);
     }
 
-    async function loadInvoiceCustomers() {
-        const invoiceCustomerList = document.getElementById("invoiceCustomerList");
+    /* ── Invoice customer reuse ──────────────────────────────────────────── */
 
+    async function loadInvoiceCustomers() {
+        const list = document.getElementById("invoiceCustomerList");
         try {
             const response = await fetch(INVOICE_CUSTOMERS_API);
             if (!response.ok) throw new Error("Failed to fetch invoice customers");
-
-            allInvoiceCustomers = await response.json();
+            allInvoiceCustomers      = await response.json();
             filteredInvoiceCustomers = [...allInvoiceCustomers];
             renderInvoiceCustomerList(filteredInvoiceCustomers);
         } catch (error) {
             console.error("Error loading invoice customers:", error);
-            invoiceCustomerList.innerHTML = `<div class="customer-empty">Failed to load previous customers.</div>`;
+            list.innerHTML = `<div class="customer-empty">Failed to load previous customers.</div>`;
         }
     }
 
     function renderInvoiceCustomerList(customers) {
-        const invoiceCustomerList = document.getElementById("invoiceCustomerList");
-
+        const list = document.getElementById("invoiceCustomerList");
         if (!customers.length) {
-            invoiceCustomerList.innerHTML = `<div class="customer-empty">No matching customers found.</div>`;
+            list.innerHTML = `<div class="customer-empty">No matching customers found.</div>`;
             return;
         }
-
-        invoiceCustomerList.innerHTML = customers.map((customer, index) => `
-            <div class="customer-item" data-index="${index}">
-                <div class="customer-name">${escapeHtml(customer.client_name)}</div>
+        list.innerHTML = customers.map((c, i) => `
+            <div class="customer-item" data-index="${i}">
+                <div class="customer-name">${escapeHtml(c.client_name)}</div>
                 <div class="customer-meta">
-                    ${escapeHtml(customer.client_address)}
-                    ${customer.client_number ? " • " + escapeHtml(customer.client_number) : ""}
+                    ${escapeHtml(c.client_address)}
+                    ${c.client_number ? " • " + escapeHtml(c.client_number) : ""}
                 </div>
             </div>
         `).join("");
 
-        document.querySelectorAll("#invoiceCustomerList .customer-item").forEach(item => {
+        list.querySelectorAll(".customer-item").forEach(item => {
             item.addEventListener("click", function () {
-                const index = Number(this.dataset.index);
-                const selectedCustomer = customers[index];
-                fillInvoiceCustomerFields(selectedCustomer);
+                fillInvoiceCustomerFields(customers[Number(this.dataset.index)]);
             });
         });
     }
 
     function fillInvoiceCustomerFields(customer) {
-        document.getElementById("clientName").value = customer.client_name || "";
-        document.getElementById("clientAddress").value = customer.client_address || "";
-        document.getElementById("clientNumber").value = customer.client_number || "";
-        document.getElementById("clientRate").value = customer.client_rate ?? "";
-        document.getElementById("invoiceCustomerSearch").value = customer.client_name || "";
+        document.getElementById("clientName").value           = customer.client_name    || "";
+        document.getElementById("clientAddress").value        = customer.client_address || "";
+        document.getElementById("clientNumber").value         = customer.client_number  || "";
+        document.getElementById("clientRate").value           = customer.client_rate    ?? "";
+        document.getElementById("invoiceCustomerSearch").value = customer.client_name   || "";
     }
 
     function filterInvoiceCustomers(searchTerm) {
         const term = searchTerm.trim().toLowerCase();
-
-        if (!term) {
-            filteredInvoiceCustomers = [...allInvoiceCustomers];
-        } else {
-            filteredInvoiceCustomers = allInvoiceCustomers.filter(customer =>
-                (customer.client_name || "").toLowerCase().includes(term) ||
-                (customer.client_address || "").toLowerCase().includes(term) ||
-                (customer.client_number || "").toLowerCase().includes(term)
+        filteredInvoiceCustomers = !term
+            ? [...allInvoiceCustomers]
+            : allInvoiceCustomers.filter(c =>
+                (c.client_name    || "").toLowerCase().includes(term) ||
+                (c.client_address || "").toLowerCase().includes(term) ||
+                (c.client_number  || "").toLowerCase().includes(term)
             );
-        }
-
         renderInvoiceCustomerList(filteredInvoiceCustomers);
     }
 
-    function resetQuoteCustomerReuse() {
-        const usePreviousQuoteCustomer = document.getElementById("usePreviousQuoteCustomer");
-        const quoteCustomerPicker = document.getElementById("quoteCustomerPicker");
-        const quoteCustomerSearch = document.getElementById("quoteCustomerSearch");
+    /* ── Reset helpers ───────────────────────────────────────────────────── */
 
-        if (usePreviousQuoteCustomer) usePreviousQuoteCustomer.checked = false;
-        if (quoteCustomerPicker) quoteCustomerPicker.classList.add("hidden");
-        if (quoteCustomerSearch) quoteCustomerSearch.value = "";
+    function resetQuoteCustomerReuse() {
+        const toggle = document.getElementById("usePreviousQuoteCustomer");
+        const picker = document.getElementById("quoteCustomerPicker");
+        const search = document.getElementById("quoteCustomerSearch");
+        if (toggle) toggle.checked = false;
+        if (picker) picker.classList.add("hidden");
+        if (search) search.value = "";
     }
 
     function resetInvoiceCustomerReuse() {
-        const usePreviousInvoiceCustomer = document.getElementById("usePreviousInvoiceCustomer");
-        const invoiceCustomerPicker = document.getElementById("invoiceCustomerPicker");
-        const invoiceCustomerSearch = document.getElementById("invoiceCustomerSearch");
-
-        if (usePreviousInvoiceCustomer) usePreviousInvoiceCustomer.checked = false;
-        if (invoiceCustomerPicker) invoiceCustomerPicker.classList.add("hidden");
-        if (invoiceCustomerSearch) invoiceCustomerSearch.value = "";
+        const toggle = document.getElementById("usePreviousInvoiceCustomer");
+        const picker = document.getElementById("invoiceCustomerPicker");
+        const search = document.getElementById("invoiceCustomerSearch");
+        if (toggle) toggle.checked = false;
+        if (picker) picker.classList.add("hidden");
+        if (search) search.value = "";
     }
+
+    /* ── Setup (bind once) ───────────────────────────────────────────────── */
 
     function setupQuoteCustomerReuse() {
         const toggle = document.getElementById("usePreviousQuoteCustomer");
         const picker = document.getElementById("quoteCustomerPicker");
         const search = document.getElementById("quoteCustomerSearch");
-
         if (!toggle || !picker || !search || toggle.dataset.bound === "true") return;
 
         toggle.addEventListener("change", async function () {
@@ -496,10 +501,7 @@
             }
         });
 
-        search.addEventListener("input", function () {
-            filterQuoteCustomers(this.value);
-        });
-
+        search.addEventListener("input", function () { filterQuoteCustomers(this.value); });
         toggle.dataset.bound = "true";
     }
 
@@ -507,7 +509,6 @@
         const toggle = document.getElementById("usePreviousInvoiceCustomer");
         const picker = document.getElementById("invoiceCustomerPicker");
         const search = document.getElementById("invoiceCustomerSearch");
-
         if (!toggle || !picker || !search || toggle.dataset.bound === "true") return;
 
         toggle.addEventListener("change", async function () {
@@ -527,55 +528,121 @@
             }
         });
 
-        search.addEventListener("input", function () {
-            filterInvoiceCustomers(this.value);
-        });
-
+        search.addEventListener("input", function () { filterInvoiceCustomers(this.value); });
         toggle.dataset.bound = "true";
     }
+
+    /* ── Navigation ──────────────────────────────────────────────────────── */
 
     function navigate(mode, el) {
         document.querySelectorAll(".nav-link").forEach(n => n.classList.remove("active"));
         if (el) el.classList.add("active");
 
-        document.getElementById("formView").style.display = "none";
-        document.getElementById("quotesView").style.display = "none";
-        document.getElementById("jobsView").style.display = "none";
-        document.getElementById("historyView").style.display = "none";
+        document.getElementById("dashboardView").style.display = "none";
+        document.getElementById("formView").style.display      = "none";
+        document.getElementById("quotesView").style.display    = "none";
+        document.getElementById("jobsView").style.display      = "none";
+        document.getElementById("historyView").style.display   = "none";
 
         setRequestStatus();
 
-        if (mode === "quotes") {
-            document.getElementById("quotesView").style.display = "block";
+        // FIX 1: dashboard branch is now inside navigate, not floating outside
+        if (mode === "dashboard") {
+            document.getElementById("dashboardView").style.display = "block";
+            loadDashboard();
             return;
         }
 
-        else if (mode === "jobs") {
+        if (mode === "quotes") {
+            document.getElementById("quotesView").style.display = "block";
+            loadQuotesList(); // FIX 2: actually fetch quotes when this tab opens
+            return;
+        }
+
+        if (mode === "jobs") {
             document.getElementById("jobsView").style.display = "block";
             return;
         }
 
-        else if (mode === "history") {
+        if (mode === "history") {
             document.getElementById("historyView").style.display = "block";
             fetchHistory();
             return;
         }
 
+        // receipt / quote form modes
         currentMode = mode;
         document.getElementById("pageTitle").innerText = MODES[mode].title;
         document.getElementById("formView").style.display = "block";
 
-        document.getElementById("quoteFields").style.display = mode === "quote" ? "block" : "none";
-        document.getElementById("receiptFields").style.display = mode === "receipt" ? "block" : "none";
-        document.getElementById("quoteReuseSection").style.display = mode === "quote" ? "block" : "none";
-        document.getElementById("invoiceReuseSection").style.display = mode === "receipt" ? "block" : "none";
+        document.getElementById("quoteFields").style.display      = mode === "quote"   ? "block"        : "none";
+        document.getElementById("receiptFields").style.display     = mode === "receipt" ? "block"        : "none";
+        document.getElementById("quoteReuseSection").style.display = mode === "quote"   ? "block"        : "none";
+        document.getElementById("invoiceReuseSection").style.display = mode === "receipt" ? "block"      : "none";
 
-        document.getElementById("invoiceBtn").style.display = mode === "receipt" ? "inline-block" : "none";
-        document.getElementById("previewQuoteBtn").style.display = mode === "quote" ? "inline-block" : "none";
-        document.getElementById("saveQuoteBtn").style.display = mode === "quote" ? "inline-block" : "none";
+        document.getElementById("invoiceBtn").style.display     = mode === "receipt" ? "inline-block" : "none";
+        document.getElementById("previewQuoteBtn").style.display = mode === "quote"  ? "inline-block" : "none";
+        document.getElementById("saveQuoteBtn").style.display    = mode === "quote"  ? "inline-block" : "none";
 
         resetForm();
     }
+
+    /* ── Quotes list (Quotes tab) ────────────────────────────────────────── */
+
+    // FIX 2 (continued): fetch and render saved quotes into the Quotes tab
+    async function loadQuotesList() {
+        const container = document.getElementById("quotesList");
+        container.innerHTML = `<div class="empty-state">Loading quotes…</div>`;
+        try {
+            const res = await fetch(QUOTE_HISTORY_API);
+            if (!res.ok) throw new Error("Failed to fetch quotes");
+            const quotes = await res.json();
+            if (!quotes || quotes.length === 0) {
+                container.innerHTML = `<div class="empty-state">No quotes available yet.</div>`;
+                return;
+            }
+            container.innerHTML = `
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Quote Number</th>
+                                <th>Client Name</th>
+                                <th>Address</th>
+                                <th>Date</th>
+                                <th>Total Amount</th>
+                                <th>Preview</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${quotes.map(q => {
+                                const num     = getQuoteNumber(q);
+                                const pdfPath = getQuotePdfPath(q);
+                                const total   = getQuoteTotalAmount(q);
+                                return `
+                                    <tr>
+                                        <td>${escapeHtml(num)}</td>
+                                        <td>${escapeHtml(q.client_name || "-")}</td>
+                                        <td>${escapeHtml(q.client_address || "-")}</td>
+                                        <td>${q.client_date ? new Date(q.client_date).toLocaleDateString() : "-"}</td>
+                                        <td>${formatMoney(total)}</td>
+                                        <td>
+                                            ${pdfPath
+                                                ? `<button class="secondary" onclick="previewPdf('/pdf/quote/${encodeURIComponent(pdfPath.split('/').pop())}')">Preview</button>`
+                                                : `<span class="muted-text">No PDF</span>`}
+                                        </td>
+                                    </tr>`;
+                            }).join("")}
+                        </tbody>
+                    </table>
+                </div>`;
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = `<div class="empty-state">Failed to load quotes.</div>`;
+        }
+    }
+
+    /* ── Form helpers ────────────────────────────────────────────────────── */
 
     function addRow(desc = "", qty = 1, price = 0) {
         const tr = document.createElement("tr");
@@ -591,123 +658,70 @@
     function resetForm() {
         document.querySelector("#itemsTable tbody").innerHTML = "";
         addRow();
-
-        document.getElementById("clientName").value = "";
+        document.getElementById("clientName").value    = "";
         document.getElementById("clientAddress").value = "";
-        document.getElementById("clientCity").value = "";
-        document.getElementById("clientNumber").value = "";
-        document.getElementById("clientRate").value = "";
-
+        document.getElementById("clientCity").value    = "";
+        document.getElementById("clientNumber").value  = "";
+        document.getElementById("clientRate").value    = "";
         resetQuoteCustomerReuse();
         resetInvoiceCustomerReuse();
     }
 
     function buildItems() {
-        const rows = document.querySelectorAll("#itemsTable tbody tr");
+        const rows  = document.querySelectorAll("#itemsTable tbody tr");
         const items = {};
-
         rows.forEach((row, index) => {
             const inputs = row.querySelectorAll("input");
             items[`item${index + 1}`] = {
                 description: inputs[0].value.trim(),
-                quantity: Number(inputs[1].value),
-                unit_price: Number(inputs[2].value)
+                quantity:    Number(inputs[1].value),
+                unit_price:  Number(inputs[2].value)
             };
         });
-
         return items;
     }
 
     function validateItems(items) {
         const values = Object.values(items);
-
-        if (values.length === 0) {
-            alert("Please add at least one item.");
-            return false;
-        }
-
+        if (values.length === 0) { alert("Please add at least one item."); return false; }
         for (const item of values) {
-            if (!item.description) {
-                alert("Each item must have a description.");
-                return false;
-            }
-            if (!item.quantity || item.quantity <= 0) {
-                alert("Each item must have a valid quantity.");
-                return false;
-            }
-            if (Number.isNaN(item.unit_price) || item.unit_price < 0) {
-                alert("Each item must have a valid unit price.");
-                return false;
-            }
+            if (!item.description) { alert("Each item must have a description."); return false; }
+            if (!item.quantity || item.quantity <= 0) { alert("Each item must have a valid quantity."); return false; }
+            if (Number.isNaN(item.unit_price) || item.unit_price < 0) { alert("Each item must have a valid unit price."); return false; }
         }
-
         return true;
     }
 
     function buildQuotePayload() {
-        const client_name = document.getElementById("clientName").value.trim();
+        const client_name    = document.getElementById("clientName").value.trim();
         const client_address = document.getElementById("clientAddress").value.trim();
-        const client_city = document.getElementById("clientCity").value.trim();
-        const items = buildItems();
-
-        if (!client_name) {
-            alert("Client name is required.");
-            return null;
-        }
-        if (!client_address) {
-            alert("Client address is required.");
-            return null;
-        }
-        if (!client_city) {
-            alert("Client city is required.");
-            return null;
-        }
-        if (!validateItems(items)) {
-            return null;
-        }
-
+        const client_city    = document.getElementById("clientCity").value.trim();
+        const items          = buildItems();
+        if (!client_name)    { alert("Client name is required.");    return null; }
+        if (!client_address) { alert("Client address is required."); return null; }
+        if (!client_city)    { alert("Client city is required.");    return null; }
+        if (!validateItems(items)) return null;
         return { client_name, client_address, client_city, items };
     }
 
     function buildInvoicePayload() {
-        const client_name = document.getElementById("clientName").value.trim();
+        const client_name    = document.getElementById("clientName").value.trim();
         const client_address = document.getElementById("clientAddress").value.trim();
-        const client_number = document.getElementById("clientNumber").value.trim();
-        const client_rate = document.getElementById("clientRate").value.trim();
-        const items = buildItems();
-
-        if (!client_name) {
-            alert("Client name is required.");
-            return null;
-        }
-        if (!client_address) {
-            alert("Client address is required.");
-            return null;
-        }
-        if (!client_number) {
-            alert("Client number is required.");
-            return null;
-        }
-        if (client_rate === "") {
-            alert("Items tax rate is required.");
-            return null;
-        }
-        if (!validateItems(items)) {
-            return null;
-        }
-
-        return {
-            client_name,
-            client_address,
-            client_number,
-            client_rate,
-            items
-        };
+        const client_number  = document.getElementById("clientNumber").value.trim();
+        const client_rate    = document.getElementById("clientRate").value.trim();
+        const items          = buildItems();
+        if (!client_name)    { alert("Client name is required.");         return null; }
+        if (!client_address) { alert("Client address is required.");      return null; }
+        if (!client_number)  { alert("Client number is required.");       return null; }
+        if (client_rate === "") { alert("Items tax rate is required.");   return null; }
+        if (!validateItems(items)) return null;
+        return { client_name, client_address, client_number, client_rate, items };
     }
+
+    /* ── Quote actions ───────────────────────────────────────────────────── */
 
     async function previewQuote() {
         if (isPreviewingQuote || isSavingQuote || isSubmittingInvoice) return;
-
         const payload = buildQuotePayload();
         if (!payload) return;
 
@@ -719,20 +733,17 @@
 
         try {
             const res = await fetch(QUOTE_PREVIEW_API, {
-                method: "POST",
+                method:  "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body:    JSON.stringify(payload)
             });
-
             if (!res.ok) {
                 const err = await res.text();
                 setRequestStatus("Failed to generate quote preview.", "error");
                 alert("Preview error: " + err);
                 return;
             }
-
-            const blob = await res.blob();
-            openPdfBlob(blob);
+            openPdfBlob(await res.blob());
             setRequestStatus("Quote preview loaded successfully.", "success");
         } catch (error) {
             console.error(error);
@@ -749,11 +760,10 @@
 
     async function saveQuote() {
         if (isSavingQuote || isPreviewingQuote || isSubmittingInvoice) return;
-
         const payload = buildQuotePayload();
         if (!payload) return;
 
-        const btn = document.getElementById("saveQuoteBtn");
+        const btn        = document.getElementById("saveQuoteBtn");
         const previewBtn = document.getElementById("previewQuoteBtn");
 
         isSavingQuote = true;
@@ -764,29 +774,24 @@
 
         try {
             const res = await fetch(QUOTE_SAVE_API, {
-                method: "POST",
+                method:  "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body:    JSON.stringify(payload)
             });
-
             if (!res.ok) {
                 const err = await res.text();
                 setRequestStatus("Failed to save quote.", "error");
                 alert("Save error: " + err);
                 return;
             }
-
             const blob = await res.blob();
-
             if (!blob || blob.size === 0) {
                 setRequestStatus("Received empty file from server.", "error");
                 alert("Save error: server returned an empty file.");
                 return;
             }
-
             downloadBlob(blob, "quote.pdf");
             setRequestStatus("Quote saved successfully. Download should start automatically.", "success");
-
         } catch (error) {
             console.error(error);
             setRequestStatus("Save and download failed.", "error");
@@ -799,9 +804,10 @@
         }
     }
 
+    /* ── Invoice actions ─────────────────────────────────────────────────── */
+
     async function submitInvoice() {
         if (isSubmittingInvoice || isSavingQuote || isPreviewingQuote) return;
-
         const payload = buildInvoicePayload();
         if (!payload) return;
 
@@ -813,83 +819,57 @@
 
         try {
             const res = await fetch(INVOICE_API, {
-                method: "POST",
+                method:  "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body:    JSON.stringify(payload)
             });
-
             if (!res.ok) {
                 const err = await res.text();
                 throw new Error(err);
             }
-
             const blob = await res.blob();
-            setRequestStatus("Invoice generated successfully.", "success");  
-            downloadBlob(blob, "invoice.pdf");                                
-
+            setRequestStatus("Invoice generated successfully.", "success");
+            downloadBlob(blob, "invoice.pdf");
         } catch (error) {
             console.error("Invoice error:", error);
             setRequestStatus("Invoice request failed.", "error");
         } finally {
-            // always runs — re-enables the button whether it succeeded or failed
             isSubmittingInvoice = false;
             setButtonLoading(btn, "Generating Invoice...", false);
             document.getElementById("addItemBtn").disabled = false;
         }
     }
 
+    /* ── Quote → Invoice conversion ──────────────────────────────────────── */
+
     async function convertQuoteToInvoice(quoteId, quoteTotal, quoteNumber) {
         const total = Number(quoteTotal);
+        if (!quoteId)            { alert("Quote ID is missing.");                              return; }
+        if (!total || total <= 0) { alert("This quote does not have a valid total amount.");   return; }
 
-        if (!quoteId) {
-            alert("Quote ID is missing.");
-            return;
-        }
-
-        if (!total || total <= 0) {
-            alert("This quote does not have a valid total amount.");
-            return;
-        }
-
-        const minAmount = total * 0.60;
+        const minAmount  = total * 0.60;
         const amountText = prompt(
             `Enter amount paid for quote ${quoteNumber}.\nMinimum allowed: ${formatMoney(minAmount)}\nMaximum allowed: ${formatMoney(total)}`
         );
-
         if (amountText === null) return;
 
         const amountPaid = Number(amountText);
-
-        if (Number.isNaN(amountPaid)) {
-            alert("Please enter a valid amount.");
-            return;
-        }
-
-        if (amountPaid > total) {
-            alert("Amount paid cannot exceed the quote amount.");
-            return;
-        }
-
-        if (amountPaid < minAmount) {
-            alert(`Amount paid cannot be less than 60% of the quote amount.\nMinimum required: ${formatMoney(minAmount)}`);
-            return;
-        }
+        if (Number.isNaN(amountPaid))    { alert("Please enter a valid amount.");                                                          return; }
+        if (amountPaid > total)           { alert("Amount paid cannot exceed the quote amount.");                                          return; }
+        if (amountPaid < minAmount)       { alert(`Amount paid cannot be less than 60% of the quote amount.\nMinimum required: ${formatMoney(minAmount)}`); return; }
 
         const confirmed = confirm(
             `Are you sure you want to convert quote ${quoteNumber} to an invoice?\n\nQuote Total: ${formatMoney(total)}\nAmount Paid: ${formatMoney(amountPaid)}`
         );
-
         if (!confirmed) return;
 
         try {
             setRequestStatus("Converting quote to invoice. Please wait...", "info");
-
-            const res = await fetch(`/quotes/${quoteId}/convert-to-invoice`, {
-                method: "POST",
+            const res  = await fetch(`/quotes/${quoteId}/convert-to-invoice`, {
+                method:  "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ amount_paid: amountPaid })
+                body:    JSON.stringify({ amount_paid: amountPaid })
             });
-
             const data = await res.json();
 
             if (!res.ok || data["failed to convert quote"]) {
@@ -906,8 +886,7 @@
                 return;
             }
 
-            const fileName = filePath.split("/").pop();
-            previewPdf(`/pdf/invoice/${encodeURIComponent(fileName)}`);
+            previewPdf(`/pdf/invoice/${encodeURIComponent(filePath.split("/").pop())}`);
             setRequestStatus("Quote converted successfully. New invoice is ready.", "success");
             fetchHistory();
         } catch (error) {
@@ -917,85 +896,56 @@
         }
     }
 
+    /* ── PDF utilities ───────────────────────────────────────────────────── */
+
     function downloadBlob(blob, filename) {
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
+        const a   = document.createElement("a");
+        a.href     = url;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         a.remove();
-
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function openPdfBlob(blob) {
-        if (previewBlobUrl) {
-            URL.revokeObjectURL(previewBlobUrl);
-        }
-
+        if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
         previewBlobUrl = URL.createObjectURL(blob);
-        const modal = document.getElementById("pdfModal");
-        const frame = document.getElementById("pdfFrame");
-
-        frame.src = previewBlobUrl;
-        modal.style.display = "flex";
+        document.getElementById("pdfFrame").src         = previewBlobUrl;
+        document.getElementById("pdfModal").style.display = "flex";
     }
 
     function previewPdf(url) {
-        if (previewBlobUrl) {
-            URL.revokeObjectURL(previewBlobUrl);
-            previewBlobUrl = null;
-        }
-
-        const modal = document.getElementById("pdfModal");
-        const frame = document.getElementById("pdfFrame");
-
-        frame.src = url;
-        modal.style.display = "flex";
+        if (previewBlobUrl) { URL.revokeObjectURL(previewBlobUrl); previewBlobUrl = null; }
+        document.getElementById("pdfFrame").src         = url;
+        document.getElementById("pdfModal").style.display = "flex";
     }
 
     function closePdf() {
-        const modal = document.getElementById("pdfModal");
-        const frame = document.getElementById("pdfFrame");
-
-        frame.src = "";
-        modal.style.display = "none";
-
-        if (previewBlobUrl) {
-            URL.revokeObjectURL(previewBlobUrl);
-            previewBlobUrl = null;
-        }
+        document.getElementById("pdfFrame").src          = "";
+        document.getElementById("pdfModal").style.display = "none";
+        if (previewBlobUrl) { URL.revokeObjectURL(previewBlobUrl); previewBlobUrl = null; }
     }
+
+    /* ── History ─────────────────────────────────────────────────────────── */
 
     async function fetchHistory() {
         const start = document.getElementById("startDate").value;
-        const end = document.getElementById("endDate").value;
+        const end   = document.getElementById("endDate").value;
 
-        let quoteUrl = QUOTE_HISTORY_API;
+        let quoteUrl   = QUOTE_HISTORY_API;
         let invoiceUrl = INVOICE_HISTORY_API;
-
         if (start && end) {
-            quoteUrl += `?start_date=${start}&end_date=${end}`;
+            quoteUrl   += `?start_date=${start}&end_date=${end}`;
             invoiceUrl += `?start_date=${start}&end_date=${end}`;
         }
 
         try {
-            const [quotesRes, invoicesRes] = await Promise.all([
-                fetch(quoteUrl),
-                fetch(invoiceUrl)
-            ]);
-
-            if (!quotesRes.ok || !invoicesRes.ok) {
-                alert("Error fetching history");
-                return;
-            }
-
-            const quotes = await quotesRes.json();
-            const invoices = await invoicesRes.json();
-
-            renderQuotes(quotes);
-            renderInvoices(invoices);
+            const [quotesRes, invoicesRes] = await Promise.all([fetch(quoteUrl), fetch(invoiceUrl)]);
+            if (!quotesRes.ok || !invoicesRes.ok) { alert("Error fetching history"); return; }
+            renderQuotes(await quotesRes.json());
+            renderInvoices(await invoicesRes.json());
         } catch (error) {
             console.error(error);
             alert("Failed to load history");
@@ -1003,101 +953,76 @@
     }
 
     function renderQuotes(quotes) {
-        const quotesBody = document.querySelector("#historyQuotesTable tbody");
-        quotesBody.innerHTML = "";
+        const tbody = document.querySelector("#historyQuotesTable tbody");
+        tbody.innerHTML = "";
 
         if (!quotes || quotes.length === 0) {
-            quotesBody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="table-empty">No quotes found</td>
-                </tr>
-            `;
+            tbody.innerHTML = `<tr><td colspan="7" class="table-empty">No quotes found</td></tr>`;
             return;
         }
 
         quotes.forEach(q => {
-            const quoteNumberValue = getQuoteNumber(q);
-            const pdfPath = getQuotePdfPath(q);
-            const totalAmount = getQuoteTotalAmount(q);
+            const num        = getQuoteNumber(q);
+            const pdfPath    = getQuotePdfPath(q);
+            const total      = getQuoteTotalAmount(q);
             const canConvert = (q.status || "").toLowerCase() !== "converted";
 
-            quotesBody.innerHTML += `
+            tbody.innerHTML += `
                 <tr>
-                    <td>${escapeHtml(quoteNumberValue)}</td>
+                    <td>${escapeHtml(num)}</td>
                     <td>${escapeHtml(q.client_name || "-")}</td>
                     <td>${escapeHtml(q.client_address || "-")}</td>
                     <td>${q.client_date ? new Date(q.client_date).toLocaleDateString() : "-"}</td>
-                    <td>${formatMoney(totalAmount)}</td>
+                    <td>${formatMoney(total)}</td>
                     <td>
-                        ${
-                            pdfPath
-                                ? `<button class="secondary" onclick="previewPdf('/pdf/quote/${encodeURIComponent(pdfPath.split('/').pop())}')">Preview</button>`
-                                : `<span class="muted-text">No PDF</span>`
-                        }
+                        ${pdfPath
+                            ? `<button class="secondary" onclick="previewPdf('/pdf/quote/${encodeURIComponent(pdfPath.split('/').pop())}')">Preview</button>`
+                            : `<span class="muted-text">No PDF</span>`}
                     </td>
                     <td>
-                        ${
-                            canConvert
-                                ? `<button class="primary" onclick="convertQuoteToInvoice(${q.id}, ${totalAmount}, '${escapeHtml(quoteNumberValue)}')">Convert to Invoice</button>`
-                                : `<span class="converted-label">Converted</span>`
-                        }
+                        ${canConvert
+                            ? `<button class="primary" onclick="convertQuoteToInvoice(${q.id}, ${total}, '${escapeHtml(num)}')">Convert to Invoice</button>`
+                            : `<span class="converted-label">Converted</span>`}
                     </td>
-                </tr>
-            `;
+                </tr>`;
         });
     }
 
     function renderInvoices(invoices) {
-        const invoicesBody = document.querySelector("#historyInvoicesTable tbody");
-        invoicesBody.innerHTML = "";
+        const tbody = document.querySelector("#historyInvoicesTable tbody");
+        tbody.innerHTML = "";
 
         if (!invoices || invoices.length === 0) {
-            invoicesBody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="table-empty">No invoices found</td>
-                </tr>
-            `;
+            tbody.innerHTML = `<tr><td colspan="5" class="table-empty">No invoices found</td></tr>`;
             return;
         }
 
         invoices.forEach(inv => {
-            const invoiceNumberValue = getInvoiceNumber(inv);
+            const num     = getInvoiceNumber(inv);
             const pdfPath = getInvoicePdfPath(inv);
 
-            invoicesBody.innerHTML += `
+            tbody.innerHTML += `
                 <tr>
-                    <td>${escapeHtml(invoiceNumberValue)}</td>
+                    <td>${escapeHtml(num)}</td>
                     <td>${escapeHtml(inv.client_name || "-")}</td>
                     <td>${escapeHtml(inv.client_address || "-")}</td>
                     <td>${inv.client_date ? new Date(inv.client_date).toLocaleDateString() : "-"}</td>
                     <td>
-                        ${
-                            pdfPath
-                                ? `<button class="secondary" onclick="previewPdf('/pdf/invoice/${encodeURIComponent(pdfPath.split('/').pop())}')">Preview</button>`
-                                : `<span class="muted-text">No PDF</span>`
-                        }
+                        ${pdfPath
+                            ? `<button class="secondary" onclick="previewPdf('/pdf/invoice/${encodeURIComponent(pdfPath.split('/').pop())}')">Preview</button>`
+                            : `<span class="muted-text">No PDF</span>`}
                     </td>
-                </tr>
-            `;
+                </tr>`;
         });
     }
 
     async function searchHistory() {
         const query = document.getElementById("searchInput").value.trim();
-
-        if (!query) {
-            fetchHistory();
-            return;
-        }
+        if (!query) { fetchHistory(); return; }
 
         try {
             const res = await fetch(`${SEARCH_API}?search=${encodeURIComponent(query)}`);
-
-            if (!res.ok) {
-                alert("Search error");
-                return;
-            }
-
+            if (!res.ok) { alert("Search error"); return; }
             const data = await res.json();
             renderQuotes(data.quotes || []);
             renderInvoices(data.invoices || []);
@@ -1107,12 +1032,50 @@
         }
     }
 
+    async function loadDashboard() {
+        try {
+            const res = await fetch(DASHBOARD_API);
+            if (!res.ok) { console.error("Failed to fetch dashboard"); return; }
+            const data = await res.json();
+
+            document.getElementById("totalQuotes").innerText     = data.total_quotes;
+            document.getElementById("totalInvoices").innerText   = data.total_invoices;
+            document.getElementById("convertedQuotes").innerText = data.total_quotes_converted;
+            document.getElementById("conversionRate").innerText  = (data.conversion_rate * 100).toFixed(2) + "%";
+
+
+            renderRevenue(data.monthly_revenue || data.montthly_revenue);
+        } catch (err) {
+            console.error("Dashboard error:", err);
+        }
+    }
+
+    function renderRevenue(data) {
+        const container = document.getElementById("revenueList");
+        if (!data || data.length === 0) {
+            container.innerHTML = "<p style='color:var(--muted);font-size:14px;'>No revenue data available.</p>";
+            return;
+        }
+
+        const max = Math.max(...data.map(r => Number(r.revenue)));
+
+        container.innerHTML = data.map(r => {
+            const amount = Number(r.revenue);
+            const pct    = max > 0 ? Math.round((amount / max) * 100) : 0;
+            return `
+                <div class="revenue-row">
+                    <span class="revenue-month">${r.month}</span>
+                    <div class="revenue-bar-track">
+                        <div class="revenue-bar-fill" style="width:${pct}%"></div>
+                    </div>
+                    <span class="revenue-amount">R ${amount.toFixed(2)}</span>
+                </div>`;
+        }).join("");
+    }
     document.addEventListener("DOMContentLoaded", () => {
         setupQuoteCustomerReuse();
         setupInvoiceCustomerReuse();
-
-        const activeNav = document.querySelector(".nav-link.active");
-        navigate("receipt", activeNav);
+        navigate("receipt", document.querySelector(".nav-link.active"));
     });
 </script>
 </body>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Lights | Quotes & Invoices</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+<div class="app">
+    <header>
+        <div class="brand">
+            <div class="logo">CL</div>
+            City Lights Electrical
+        </div>
+        <div class="header-right">Quotes & Invoices Management</div>
+    </header>
+
+    <div class="main">
+        <aside>
+            <div class="aside-title">Navigation</div>
+            <div class="nav-link active" data-mode="receipt">Create Invoice</div>
+            <div class="nav-link" data-mode="quote">Create Quote</div>
+            <div class="nav-link" data-mode="dashboard">Dashboard</div>
+            <div class="nav-link" data-mode="quotes">Quotes</div>
+            <div class="nav-link" data-mode="jobs">Jobs Done</div>
+            <div class="nav-link" data-mode="history">History</div>
+        </aside>
+
+        <div class="content">
+            <div id="dashboardView" style="display:none;">
+                <div class="badge">Dashboard</div>
+                <h2>Business Overview</h2>
+                <p class="section-subtitle">Key statistics and performance metrics.</p>
+
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <h3>Total Quotes</h3>
+                        <p id="totalQuotes">0</p>
+                    </div>
+
+                    <div class="card">
+                        <h3>Total Invoices</h3>
+                        <p id="totalInvoices">0</p>
+                    </div>
+
+                    <div class="card">
+                        <h3>Converted Quotes</h3>
+                        <p id="convertedQuotes">0</p>
+                    </div>
+
+                    <div class="card">
+                        <h3>Conversion Rate</h3>
+                        <p id="conversionRate">0%</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Monthly Revenue</h3>
+                    <div id="revenueList"></div>
+                </div>
+                <div class="card">
+                    <h3> Invoice Per Month</h3>
+                    <div id="invoicesPerMonthList"></div>
+                </div>
+            </div>
+
+            <div id="formView" class="card">
+                <div class="badge">Document Generator</div>
+                <h2 id="pageTitle"></h2>
+                <p class="section-subtitle">Fill in the client details and items below to generate your document.</p>
+
+                <div id="quoteReuseSection" class="reuse-customer-section" style="display:none;">
+                    <label class="reuse-toggle">
+                        <input type="checkbox" id="usePreviousQuoteCustomer">
+                        Use previous customer details
+                    </label>
+
+                    <div id="quoteCustomerPicker" class="customer-picker hidden">
+                        <input
+                            type="text"
+                            id="quoteCustomerSearch"
+                            placeholder="Search customer by name, address, or city"
+                            class="customer-search-input"
+                        >
+
+                        <div id="quoteCustomerList" class="customer-list">
+                            <div class="customer-empty">No customers loaded yet.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="invoiceReuseSection" class="reuse-customer-section" style="display:none;">
+                    <label class="reuse-toggle">
+                        <input type="checkbox" id="usePreviousInvoiceCustomer">
+                        Use previous customer details
+                    </label>
+
+                    <div id="invoiceCustomerPicker" class="customer-picker hidden">
+                        <input
+                            type="text"
+                            id="invoiceCustomerSearch"
+                            placeholder="Search customer by name, address, or number"
+                            class="customer-search-input"
+                        >
+
+                        <div id="invoiceCustomerList" class="customer-list">
+                            <div class="customer-empty">No customers loaded yet.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="field-group">
+                        <label>Client Name</label>
+                        <input id="clientName" placeholder="Enter client name">
+                    </div>
+
+                    <div class="field-group">
+                        <label>Client Address</label>
+                        <input id="clientAddress" placeholder="Enter client address">
+                    </div>
+
+                    <div id="quoteFields" class="full-width" style="display:none;">
+                        <div class="form-grid">
+                            <div class="field-group">
+                                <label>Client City</label>
+                                <input id="clientCity" placeholder="Enter client city">
+                            </div>
+
+                            <div class="field-group">
+                                <label>Pricing Visibility</label>
+                                <label class="toggle-row">
+                                    <input type="checkbox" id="hidePricingToggle">
+                                    Hide item prices (show Total Labour only)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="receiptFields" class="full-width">
+                        <div class="form-grid">
+                            <div class="field-group">
+                                <label>Client Number</label>
+                                <input id="clientNumber" placeholder="Enter client number">
+                            </div>
+
+                            <div class="field-group">
+                                <label>Mark Up Rate(%)</label>
+                                <input id="clientRate" placeholder="Enter mark up rate">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Items</h3>
+                <div class="table-wrap">
+                    <table id="itemsTable">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th style="width: 120px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="actions">
+                    <button class="secondary" id="addItemBtn">Add Item</button>
+                    <button class="primary" id="invoiceBtn">Generate Invoice</button>
+                    <button class="secondary" id="previewQuoteBtn" style="display:none;">Preview Quote</button>
+                    <button class="primary" id="saveQuoteBtn" style="display:none;">Save & Download Quote</button>
+                </div>
+
+                <div id="requestStatus" class="status-box"></div>
+            </div>
+
+            <div id="quotesView" style="display:none;">
+                <div class="badge">Quotes</div>
+                <h2>Stationery Quotes</h2>
+                <p class="section-subtitle">View all saved quote entries here.</p>
+                <div id="quotesList">
+                    <div class="empty-state">No quotes available yet.</div>
+                </div>
+            </div>
+
+            <!-- Temporary Jobs done section -->
+            <div id="jobsView" style="display:none;">
+                <div class="badge">Jobs Done</div>
+                <h2>Here are some of the works done.</h2>
+                <p class="section-subtitle">Let's browse..</p>
+
+                <div class="empty-state">Coming Soon...</div>
+            </div>
+
+            <div id="historyView" style="display:none;">
+                <div class="badge">History</div>
+                <h2>History</h2>
+                <p class="section-subtitle">Filter and search through previously generated quotes and invoices.</p>
+
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>Start Date</label>
+                        <input type="date" id="startDate">
+                    </div>
+                    <div class="filter-group">
+                        <label>End Date</label>
+                        <input type="date" id="endDate">
+                    </div>
+                    <button class="primary">Filter</button>
+                </div>
+
+                <div class="filters">
+                    <div class="filter-group" style="min-width: 280px;">
+                        <label>Search</label>
+                        <input type="text" id="searchInput" placeholder="Search client, quote id, invoice id...">
+                    </div>
+                    <button class="primary">Search</button>
+                </div>
+
+                <h3>Quotes</h3>
+                <div class="table-wrap">
+                    <table id="historyQuotesTable">
+                        <thead>
+                            <tr>
+                                <th>Quote Number</th>
+                                <th>Client Name</th>
+                                <th>Address</th>
+                                <th>Date</th>
+                                <th>Total Amount</th>
+                                <th>Quote</th>
+                                <th>Convert</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <h3>Invoices</h3>
+                <div class="table-wrap">
+                    <table id="historyInvoicesTable">
+                        <thead>
+                            <tr>
+                                <th>Invoice Number</th>
+                                <th>Client Name</th>
+                                <th>Address</th>
+                                <th>Date</th>
+                                <th>Invoice</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="pdfModal">
+    <div class="modal-content">
+        <button class="modal-close">Close</button>
+        <iframe id="pdfFrame"></iframe>
+    </div>
+</div>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

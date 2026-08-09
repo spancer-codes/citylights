@@ -14,6 +14,7 @@ class QuoteRequest(BaseModel):
     client_address: str
     client_city: Optional[str] = None
     items: Dict[str, QuoteItem]
+    show_pricing: bool = True  
 
 class QuoteUpdateRequest(BaseModel):
     client_name: Optional[str] = None

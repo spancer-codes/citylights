@@ -1,16 +1,38 @@
 import os
+import re
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from fastapi.responses import FileResponse
 from app.db.database import get_db
+from app.models import Quotes, Invoices
 #from app.schemas import (WhatsAppExtractRequest,AIGeneratedQuoteResponse,SelectClientRequest,ApproveQuoteRequest)
 from app.services.quote_to_invoice import convert_quote_to_invoice
+from app.services.quote_invoice_generators import (
+    generate_invoice_file,
+    generate_priced_quote_file,
+    generate_scope_quote_file,
+    QuoteType,
+)
 #from app.ai.ai_quote_extract import extract_from_whatsapp
 
 router = APIRouter()
 
 QUOTE_PDF_FOLDER = "generated_quotes"
 INVOICE_PDF_FOLDER = "generated_invoices"
+
+def quote_to_payload(q):
+    return {
+        "date_created": str(q.date_created),
+        "client_name": q.client_name,
+        "client_address": q.client_address,
+        "client_city": q.client_city,
+        "client_email": q.client_email,
+        "client_number": q.client_number,
+        "deposit_percent": q.deposit_percent,
+        "terms": q.terms or [],
+        "items": q.items or [],  # ensure this is a list of dicts
+        "show_pricing": (q.quote_type or QuoteType.PRICED) != QuoteType.SCOPE_ONLY,
+    }
 
 # serve pdf for preview
 @router.get("/pdf/{type}/{filename}")
@@ -36,7 +58,7 @@ def serve_pdf(type: str, filename: str):
             "Accept-Ranges": "bytes"
         }
     )
-        
+
 # Quote to Invoice conversion route
 @router.post("/quotes/{quote_id}/convert-to-invoice")
 def convert_quote_to_invoice_route(
@@ -44,6 +66,16 @@ def convert_quote_to_invoice_route(
     amount_paid: float = Body(..., embed=True),
     db: Session = Depends(get_db)
 ):
+    quote = db.query(Quotes).filter(Quotes.id == quote_id).first()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    if (quote.quote_type or QuoteType.PRICED) == QuoteType.SCOPE_ONLY:
+        raise HTTPException(
+            status_code=400,
+            detail="This quote has no item pricing (scope-of-work only) and cannot be converted directly to an invoice. Create a priced quote first.",
+        )
+
     return convert_quote_to_invoice(quote_id, amount_paid, db)
 
 """

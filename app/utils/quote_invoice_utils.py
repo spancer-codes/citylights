@@ -7,7 +7,7 @@ def slugify_name(name: str):
     name = re.sub(r'[^a-z0-9]', '', name)
     return name
 
-# Calculate quute totals
+# Calculate quote totals
 def calculate_quote_totals(items: dict):
     subtotal = 0
     structured_items = []
@@ -21,7 +21,7 @@ def calculate_quote_totals(items: dict):
             "description": item.description,
             "quantity": item.quantity,
             "unit_price": unit_price,
-            "line_total": line_total 
+            "total_price": line_total,   # renamed from line_total to match generator/template expectations
         })
     return subtotal, structured_items
 
@@ -34,6 +34,8 @@ def build_quote_payload(data: QuoteRequest, quote_number: str):
         "client_name": data.client_name,
         "client_address": data.client_address,
         "client_city": data.client_city,
+        "client_email": getattr(data, "client_email", None),
+        "client_number": getattr(data, "client_number", None),
         "date_created": date.today().isoformat(),
         "valid_until": (date.today() + timedelta(days=14)).isoformat(),
         "currency": "R",
@@ -42,7 +44,10 @@ def build_quote_payload(data: QuoteRequest, quote_number: str):
         "tax": 0,
         "discount": 0,
         "total": total_amount,
-        "notes": "Quotation valid for 14 days"
+        "deposit_percent": getattr(data, "deposit_percent", None),
+        "terms": getattr(data, "terms", None) or [],
+        "notes": "Quotation valid for 14 days",
+        "show_pricing": getattr(data, "show_pricing", True),
     }
 
     return payload, total_amount

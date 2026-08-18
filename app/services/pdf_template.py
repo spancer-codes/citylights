@@ -263,8 +263,8 @@ INVOICE_TEMPLATE = """
       </div>
       <div class="party">
         <div class="party-label">From</div>
-        <div class="party-name">Leeroy</div>
-        <div class="party-detail">Leeroy Antony Muzondi</div>
+        <div class="party-name">Leeroy Electrician</div>
+        <div class="party-detail">City Lights Electrical</div>
       </div>
     </div>
  
@@ -337,7 +337,7 @@ INVOICE_TEMPLATE = """
     <div class="footer">
       <div class="footer-block">
         <div class="footer-label">Banking details</div>
-        <div class="footer-row"><span class="key">Account holder</span><span class="val">Leeroy Antony Muzondi</span></div>
+        <div class="footer-row"><span class="key">Account holder</span><span class="val">City Lights Electrical</span></div>
         <div class="footer-row"><span class="key">Bank</span><span class="val">Bidvest Bank Alliance</span></div>
         <div class="footer-row"><span class="key">Branch code</span><span class="val">683000</span></div>
         <div class="footer-row"><span class="key">Account type</span><span class="val">Current</span></div>
@@ -525,7 +525,7 @@ QUOTE_TEMPLATE = """
       <div class="party">
         <div class="party-label">Quotation from</div>
         <div class="party-name">Lee Electrician</div>
-        <div class="party-detail">Leeroy Antony Muzondi</div>
+        <div class="party-detail">City Lights Electrical</div>
       </div>
     </div>
 
@@ -640,7 +640,7 @@ QUOTE_TEMPLATE = """
     <div class="footer">
       <div class="footer-block">
         <div class="footer-label">Banking details</div>
-        <div class="footer-row"><span class="key">Account holder</span><span class="val">Leeroy Antony Muzondi</span></div>
+        <div class="footer-row"><span class="key">Account holder</span><span class="val">City Lights Electrical</span></div>
         <div class="footer-row"><span class="key">Bank</span><span class="val">Bidvest Bank Alliance</span></div>
         <div class="footer-row"><span class="key">Branch code</span><span class="val">683000</span></div>
         <div class="footer-row"><span class="key">Account type</span><span class="val">Current</span></div>
@@ -795,7 +795,7 @@ Prec_Quote_Template = """
       <div class="party">
         <div class="party-label">Quotation from</div>
         <div class="party-name">Lee Electrician</div>
-        <div class="party-detail">Leeroy Antony Muzondi</div>
+        <div class="party-detail">City Lights Electrical</div>
       </div>
     </div>
  
@@ -884,7 +884,7 @@ Prec_Quote_Template = """
     <div class="footer">
       <div class="footer-block">
         <div class="footer-label">Banking details</div>
-        <div class="footer-row"><span class="key">Account holder</span><span class="val">Leeroy Antony Muzondi</span></div>
+        <div class="footer-row"><span class="key">Account holder</span><span class="val">City Lights Electrical</span></div>
         <div class="footer-row"><span class="key">Bank</span><span class="val">Bidvest Bank Alliance</span></div>
         <div class="footer-row"><span class="key">Branch code</span><span class="val">683000</span></div>
         <div class="footer-row"><span class="key">Account type</span><span class="val">Current</span></div>

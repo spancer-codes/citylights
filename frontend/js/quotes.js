@@ -1,6 +1,3 @@
-// quotes.js
-// Quote preview/save actions, plus rendering the saved-quotes list (Quotes tab).
-
 import { state } from "./state.js";
 import { QUOTE_PREVIEW_API, QUOTE_SAVE_API, QUOTE_HISTORY_API } from "./config.js";
 import { setRequestStatus, setButtonLoading, escapeHtml, formatMoney, getQuoteNumber, getQuotePdfPath, getQuoteTotalAmount } from "./utils.js";

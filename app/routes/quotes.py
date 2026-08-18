@@ -69,7 +69,7 @@ def finalize_quote(data: QuoteRequest, db: Session = Depends(get_db)):
             total_amount=None,
             quote_data=None,
             cached_pdf_path=None,
-            quote_type=quote_type,
+            #quote_type=quote_type,
             request_hash=request_hash,
         )
 
@@ -109,23 +109,20 @@ def finalize_quote(data: QuoteRequest, db: Session = Depends(get_db)):
 # quotes preview router =-----------
 @router.post("/quote/preview")
 def preview_quote(data: QuoteRequest):
-    try:
-        slug = slugify_name(data.client_name)
-        preview_number = f"{slug}-preview"
-        payload, _ = build_quote_payload(data, slug)
+    slug = slugify_name(data.client_name)
+    preview_number = f"{slug}-preview"
+    payload, _ = build_quote_payload(data, slug)
 
-        if data.show_pricing:
-            result = generate_priced_quote_file(payload, preview_number)
-        else:
-            result = generate_scope_quote_file(payload, preview_number)
+    if data.show_pricing:
+        result = generate_priced_quote_file(payload, preview_number)
+    else:
+        result = generate_scope_quote_file(payload, preview_number)
 
-        return FileResponse(
-            result["pdf_path"],
-            media_type="application/pdf",
-            filename="quote-preview.pdf"
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return FileResponse(
+        result["pdf_path"],
+        media_type="application/pdf",
+        filename="quote-preview.pdf"
+    )
 
 
 # get all quotes in the db
@@ -159,7 +156,8 @@ def get_all_quotes(
             "total_amount": float(q.total_amount or 0.0),
             "cached_pdf_path": q.cached_pdf_path or f"generated_quotes/{q.client_quote_number}.pdf" or "",
             "status": q.status or "pending",
-            "quote_type": q.quote_type or "priced",
+            # Not yet updated
+            #"quote_type": q.quote_type or "priced",
         }
         for q in quotes
     ]

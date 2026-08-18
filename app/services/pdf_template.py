@@ -263,7 +263,7 @@ INVOICE_TEMPLATE = """
       </div>
       <div class="party">
         <div class="party-label">From</div>
-        <div class="party-name">Leeroy Electrician</div>
+        <div class="party-name">Lee Electrician</div>
         <div class="party-detail">City Lights Electrical</div>
       </div>
     </div>

@@ -54,10 +54,17 @@ def get_quote(quote_id: int, db: Session = Depends(get_db)):
         )
 
 @router.get("/invoice/preview/{invoice_id}")
-def get_invoice(invoice_id, db : Session =Depends(get_db)):
+def get_invoice(invoice_id: int, db : Session =Depends(get_db)):
     invoice = db.query(Invoices).filter(Invoices.id == invoice_id).first()
 
-    invoice_data = json.loads(invoice.invoice_data)
+    if not invoice:
+        return {"error": "Invoice not found"}
+
+    invoice_data = (
+        json.loads(invoice.invoice_data)
+        if isinstance(invoice.invoice_data, str)
+        else invoice.invoice_data
+    )
 
     invoice_number=invoice_data.get("invoice_number")
     os.makedirs("generated_invoices", exist_ok=True)

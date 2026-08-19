@@ -13,6 +13,12 @@ from app.services.pdf_template import INVOICE_TEMPLATE, QUOTE_TEMPLATE
 
 router = APIRouter()
 
+def safe_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
 @router.get("/quote/preview/{quote_id}")
 def get_quote(quote_id: int, db: Session = Depends(get_db)):
     quote = db.query(Quotes).filter(Quotes.id == quote_id).first()
@@ -30,14 +36,14 @@ def get_quote(quote_id: int, db: Session = Depends(get_db)):
         client_email=quote.quote_data.get("client_email"),
         client_number=quote.quote_data.get("client_number"),
 
-        deposit_percent=quote.quote_data.get("deposit_percent"),
+        deposit_percent=safe_float(quote.quote_data.get("deposit_percent")),
         terms=quote.quote_data.get("terms", []),
 
         items=quote.quote_data.get("items", []),
-        grand_total=quote.quote_data.get("subtotal"),
+        grand_total=safe_float(quote.quote_data.get("subtotal")),
 
         show_pricing=quote.quote_data.get("show_pricing", ""),
-        total_labour=quote.quote_data.get("total_labour", ""),
+        total_labour=safe_float(quote.quote_data.get("total_labour", "")),
     )
 
     HTML(string=html).write_pdf(pdf_path)
@@ -66,9 +72,9 @@ def get_invoice(invoice_id, db : Session =Depends(get_db)):
         date_created=invoice_data.get("date_created"),
 
         items=invoice_data.get("items", []),
-        subtotal=invoice_data.get("subtotal"),
-        tax=invoice_data.get("tax"),
-        total=invoice_data.get("total"),
+        subtotal=safe_float(invoice_data.get("subtotal")),
+        tax=safe_float(invoice_data.get("tax")),
+        total=safe_float(invoice_data.get("total")),
         notes=invoice_data.get("notes"),
     )
     HTML(string=html).write_pdf(pdf_path)

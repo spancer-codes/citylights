@@ -53,6 +53,7 @@ class InvoiceFromQuoteRequest(BaseModel):
     client_number: Optional[str] = None
 
 class InvoiceOut(BaseModel):
+    id: int
     invoice_number: Optional[str] = ""
     client_name: Optional[str] = ""
     client_address: Optional[str] = ""

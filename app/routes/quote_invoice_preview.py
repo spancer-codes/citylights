@@ -42,7 +42,7 @@ def get_quote(quote_id: int, db: Session = Depends(get_db)):
         items=quote.quote_data.get("items", []),
         grand_total=safe_float(quote.quote_data.get("subtotal")),
 
-        show_pricing=quote.quote_data.get("show_pricing", ""),
+        show_pricing=quote.quote_data.get(""),
         total_labour=safe_float(quote.quote_data.get("total_labour", "")),
     )
 

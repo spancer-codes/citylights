@@ -122,6 +122,7 @@ def get_all_invoices(
             pdf_path = inv.final_pdf_path or f"generated_invoices/{invoice_number}.pdf"
 
             result.append({
+                "id": inv.id,
                 "invoice_number": invoice_number,
                 "client_name": inv.client_name or "",
                 "client_address": inv.client_address or "",
@@ -130,6 +131,5 @@ def get_all_invoices(
             })
 
         return result
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

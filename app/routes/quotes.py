@@ -1,6 +1,4 @@
 import os
-import json
-from typing import List
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import FileResponse
 from datetime import datetime, date, timedelta
@@ -18,9 +16,9 @@ from app.utils.quote_invoice_utils import slugify_name, build_quote_payload
 from sqlalchemy.orm import Session
 from app.db.locks import acquire_client_lock, make_request_hash
 
-router = APIRouter()
+router = APIRouter()    
 
-# create quote router
+# Save and download quote
 @router.post("/quote/finalize")
 def finalize_quote(data: QuoteRequest, db: Session = Depends(get_db)):
     try:

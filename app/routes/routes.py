@@ -7,12 +7,8 @@ from app.db.database import get_db
 from app.models import Quotes, Invoices
 #from app.schemas import (WhatsAppExtractRequest,AIGeneratedQuoteResponse,SelectClientRequest,ApproveQuoteRequest)
 from app.services.quote_to_invoice import convert_quote_to_invoice
-from app.services.quote_invoice_generators import (
-    generate_invoice_file,
-    generate_priced_quote_file,
-    generate_scope_quote_file,
-    QuoteType,
-)
+from app.services.quote_invoice_generators import QuoteType
+from app.utils.pdf_creator import invoice_pdf, quote_pdf
 #from app.ai.ai_quote_extract import extract_from_whatsapp
 
 router = APIRouter()
@@ -77,6 +73,28 @@ def convert_quote_to_invoice_route(
         )
 
     return convert_quote_to_invoice(quote_id, amount_paid, db)
+
+@router.get("/quote/preview/{quote_id}")
+def get_quote(quote_id: int, db: Session = Depends(get_db)):
+    quote = db.query(Quotes).filter(Quotes.id == quote_id).first()
+
+    pdf_path, filename = quote_pdf(quote)
+    return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=filename
+        )
+
+@router.get("/invoice/preview/{invoice_id}")
+def get_invoice(invoice_id: int, db : Session =Depends(get_db)):
+    invoice = db.query(Invoices).filter(Invoices.id == invoice_id).first()
+
+    pdf_path, filename = invoice_pdf(invoice)
+    return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=filename
+        )
 
 """
 # whatsapp quote extraction route

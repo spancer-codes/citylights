@@ -2,7 +2,7 @@ import os
 from datetime import date
 from jinja2 import Template
 from weasyprint import HTML, CSS
-from .pdf_template import INVOICE_TEMPLATE, QUOTE_TEMPLATE
+from ..utils.pdf_template import INVOICE_TEMPLATE, QUOTE_TEMPLATE
 from typing import Literal
 
 # IVOICE GENERATOR

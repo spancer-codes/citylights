@@ -13,7 +13,7 @@ def calculate_quote_totals(items: dict):
     structured_items = []
 
     for item in items.values():
-        unit_price = item.unit_price * 1.2
+        unit_price = item.unit_price * 1.25
         line_total = item.quantity * unit_price
         subtotal += line_total
 
@@ -21,7 +21,7 @@ def calculate_quote_totals(items: dict):
             "description": item.description,
             "quantity": item.quantity,
             "unit_price": unit_price,
-            "total_price": line_total,   # renamed from line_total to match generator/template expectations
+            "total_price": line_total,  
         })
     return subtotal, structured_items
 
